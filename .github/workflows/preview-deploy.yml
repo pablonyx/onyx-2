@@ -103,7 +103,7 @@ jobs:
             
             **Preview URL:** ${deployUrl}
             **Branch:** \`${{ github.event.pull_request.head.ref }}\`
-            **Commit:** \`${{ github.event.pull_request.head.sha.substring(0, 7) }}\`
+            **Commit:** \`${{ github.event.pull_request.head.sha }}\`
             
             ### 🧪 Automated Tests
             **Status:** Running...
