@@ -37,10 +37,10 @@ jobs:
           railway whoami
           
           # Link once – this sets project context for all later commands
-          railway link --project "$PROJECT_ID" --team personal --yes
+          railway link --team personal --project "$PROJECT_ID" --environment production
           
           # Create the env if it's brand-new (ignore "already exists" error)
-          railway environment new "$ENV_NAME" --yes || true
+          railway environment new "$ENV_NAME" || true
           
           # Deploy the compose setup
           railway up --detach --environment "$ENV_NAME"
@@ -167,7 +167,7 @@ jobs:
           ENV_NAME="pr-${{ github.event.pull_request.number }}"
           
           # Link to the project first
-          railway link --project "$PROJECT_ID" --team personal --yes
+          railway link --team personal --project "$PROJECT_ID" --environment production
           
           # Delete environment (ignore if it doesn't exist)
           railway environment delete "$ENV_NAME" --yes || true
