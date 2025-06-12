@@ -25,6 +25,7 @@ jobs:
         env:
           RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
           PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
+          SERVICE_ID: ${{ secrets.RAILWAY_SERVICE_ID }}
         run: |
           set -euo pipefail
           ENV_NAME="pr-${{ github.event.pull_request.number }}"
@@ -40,10 +41,13 @@ jobs:
           railway link --project "$PROJECT_ID" --environment production
           
           # Create the env if it's brand-new (ignore "already exists" error)
-          railway environment new "$ENV_NAME" || true
+          railway environment new "$ENV_NAME" --json || true
           
-          # Deploy the compose setup
-          railway up --detach --environment "$ENV_NAME"
+          # Deploy the compose setup with specific service
+          railway up \
+            --service "$SERVICE_ID" \
+            --environment "$ENV_NAME" \
+            --detach
           
           # Wait for deployment to complete
           sleep 30
