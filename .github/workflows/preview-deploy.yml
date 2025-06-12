@@ -4,9 +4,6 @@ on:
   pull_request:
     types: [opened, synchronize, reopened]
 
-env:
-  RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-
 jobs:
   deploy-preview:
     runs-on: ubuntu-latest
@@ -25,29 +22,44 @@ jobs:
       
       - name: Deploy to Railway
         id: deploy
+        env:
+          RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
+          PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
+          SERVICE_ID: ${{ secrets.RAILWAY_SERVICE_ID }}
+          TEAM: ${{ secrets.RAILWAY_TEAM }}
         run: |
-          # Create a unique environment name for this PR
+          set -euo pipefail
           ENV_NAME="pr-${{ github.event.pull_request.number }}"
           
-          # Deploy using Railway CLI
-          railway link ${{ secrets.RAILWAY_PROJECT_ID }}
-          railway environment $ENV_NAME
+          # Debug: Check if token is being passed
+          echo "Token exists: $([ -n "$RAILWAY_API_TOKEN" ] && echo "Yes" || echo "No")"
+          echo "Token length: ${#RAILWAY_API_TOKEN}"
           
-          # Deploy the services
-          railway up --detach --environment=$ENV_NAME
+          # Test Railway authentication
+          railway whoami
           
-          # Wait for deployment to complete and get URL
+          # Link: pass team + project to avoid prompts
+          railway link \
+            --team "$TEAM" \
+            --project "$PROJECT_ID" \
+            --environment production
+          
+          # Create the env if it doesn't exist (idempotent, no --json flag)
+          railway environment new "$ENV_NAME" || true
+          
+          # Deploy just the chosen service
+          railway up \
+            --service "$SERVICE_ID" \
+            --environment "$ENV_NAME" \
+            --detach
+          
+          # Wait for deployment to complete
           sleep 30
           
-          # Get the deployment URL
-          DEPLOY_URL=$(railway status --json | jq -r '.url // empty')
-          
-          # If no URL from status, construct it
-          if [ -z "$DEPLOY_URL" ]; then
-            DEPLOY_URL="https://${ENV_NAME}.up.railway.app"
-          fi
-          
-          echo "DEPLOY_URL=$DEPLOY_URL" >> $GITHUB_OUTPUT
+          # Capture the public URL for Keystone tests
+          DEPLOY_URL=$(railway status --json --environment "$ENV_NAME" | jq -r '.url // empty')
+          [[ -z "$DEPLOY_URL" ]] && DEPLOY_URL="https://${ENV_NAME}.up.railway.app"
+          echo "DEPLOY_URL=$DEPLOY_URL" >> "$GITHUB_OUTPUT"
           echo "Preview URL: $DEPLOY_URL"
       
       - name: Wait for services to be ready
@@ -81,13 +93,16 @@ jobs:
             -H "Authorization: Bearer ${{ secrets.KEYSTONE_API_TOKEN }}" \
             -H "Content-Type: application/json" \
             -d '{
-              "test_suite_id": "${{ secrets.KEYSTONE_TEST_SUITE_ID }}",
+              "test_suite_id": ${{ secrets.KEYSTONE_TEST_SUITE_ID }},
               "base_url": "${{ steps.deploy.outputs.DEPLOY_URL }}",
               "environment": "preview",
-              "pr_number": ${{ github.event.pull_request.number }},
-              "commit_sha": "${{ github.event.pull_request.head.sha }}"
+              "metadata": {
+                "pr_number": "${{ github.event.pull_request.number }}",
+                "commit_sha": "${{ github.event.pull_request.head.sha }}",
+                "branch": "${{ github.event.pull_request.head.ref }}"
+              }
             }' \
-            https://api.keystone.com/v1/test-runs)
+            https://app.keystone-ai.com/api/v1/runs)
           
           TEST_RUN_ID=$(echo $RESPONSE | jq -r '.id')
           echo "TEST_RUN_ID=$TEST_RUN_ID" >> $GITHUB_OUTPUT
@@ -103,12 +118,12 @@ jobs:
             
             **Preview URL:** ${deployUrl}
             **Branch:** \`${{ github.event.pull_request.head.ref }}\`
-            **Commit:** \`${{ github.event.pull_request.head.sha.substring(0, 7) }}\`
+            **Commit:** \`${{ github.event.pull_request.head.sha }}\`
             
             ### 🧪 Automated Tests
             **Status:** Running...
             **Test Run ID:** ${testRunId}
-            **View Results:** [Keystone Dashboard](https://app.keystone.com/runs/${testRunId})
+            **View Results:** [Keystone Dashboard](https://app.keystone-ai.com/runs/${testRunId})
             
             ---
             
@@ -153,10 +168,15 @@ jobs:
           echo "$HOME/.railway/bin" >> $GITHUB_PATH
       
       - name: Delete preview environment
+        env:
+          RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
+          PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
         run: |
           ENV_NAME="pr-${{ github.event.pull_request.number }}"
           
-          railway link ${{ secrets.RAILWAY_PROJECT_ID }}
-          railway environment delete $ENV_NAME --yes || true
+          # Link to the project first
+          railway link --project "$PROJECT_ID" --environment production
           
-          echo "Preview environment $ENV_NAME deleted"
+          # Delete environment (ignore if it doesn't exist)
+          railway environment delete "$ENV_NAME" --yes || true
+          echo "Preview environment $ENV_NAME cleanup completed"
