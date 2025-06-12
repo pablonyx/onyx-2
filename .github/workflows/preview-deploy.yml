@@ -26,7 +26,6 @@ jobs:
           RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
           PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
           SERVICE_ID: ${{ secrets.RAILWAY_SERVICE_ID }}
-          WORKSPACE: ${{ secrets.RAILWAY_WORKSPACE }}
         run: |
           set -euo pipefail
           ENV_NAME="pr-${{ github.event.pull_request.number }}"
@@ -38,9 +37,8 @@ jobs:
           # Test Railway authentication
           railway whoami
           
-          # Link: pass workspace + project so the CLI never prompts
+          # Link: just use project ID without team flag
           railway link \
-            --team "$WORKSPACE" \
             --project "$PROJECT_ID" \
             --environment production
           
