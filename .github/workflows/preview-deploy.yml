@@ -7,7 +7,6 @@ on:
 jobs:
   deploy-preview:
     runs-on: ubuntu-latest
-    environment: preview
     permissions:
       pull-requests: write
       contents: read
@@ -26,6 +25,10 @@ jobs:
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
         run: |
+          # Debug: Check if token is being passed
+          echo "Token exists: $([ -n "$RAILWAY_TOKEN" ] && echo "Yes" || echo "No")"
+          echo "Token length: ${#RAILWAY_TOKEN}"
+          
           # Create a unique environment name for this PR
           ENV_NAME="pr-${{ github.event.pull_request.number }}"
           
@@ -151,7 +154,6 @@ jobs:
   cleanup-preview:
     if: github.event.action == 'closed'
     runs-on: ubuntu-latest
-    environment: preview
     
     steps:
       - name: Install Railway CLI
