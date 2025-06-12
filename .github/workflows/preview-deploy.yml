@@ -81,13 +81,16 @@ jobs:
             -H "Authorization: Bearer ${{ secrets.KEYSTONE_API_TOKEN }}" \
             -H "Content-Type: application/json" \
             -d '{
-              "test_suite_id": "${{ secrets.KEYSTONE_TEST_SUITE_ID }}",
+              "test_suite_id": ${{ secrets.KEYSTONE_TEST_SUITE_ID }},
               "base_url": "${{ steps.deploy.outputs.DEPLOY_URL }}",
               "environment": "preview",
-              "pr_number": ${{ github.event.pull_request.number }},
-              "commit_sha": "${{ github.event.pull_request.head.sha }}"
+              "metadata": {
+                "pr_number": "${{ github.event.pull_request.number }}",
+                "commit_sha": "${{ github.event.pull_request.head.sha }}",
+                "branch": "${{ github.event.pull_request.head.ref }}"
+              }
             }' \
-            https://api.keystone.com/v1/test-runs)
+            https://app.keystone-ai.com/api/v1/runs)
           
           TEST_RUN_ID=$(echo $RESPONSE | jq -r '.id')
           echo "TEST_RUN_ID=$TEST_RUN_ID" >> $GITHUB_OUTPUT
@@ -108,7 +111,7 @@ jobs:
             ### 🧪 Automated Tests
             **Status:** Running...
             **Test Run ID:** ${testRunId}
-            **View Results:** [Keystone Dashboard](https://app.keystone.com/runs/${testRunId})
+            **View Results:** [Keystone Dashboard](https://app.keystone-ai.com/runs/${testRunId})
             
             ---
             
