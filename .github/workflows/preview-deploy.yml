@@ -23,11 +23,11 @@ jobs:
       - name: Deploy to Railway
         id: deploy
         env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
         run: |
           # Debug: Check if token is being passed
-          echo "Token exists: $([ -n "$RAILWAY_TOKEN" ] && echo "Yes" || echo "No")"
-          echo "Token length: ${#RAILWAY_TOKEN}"
+          echo "Token exists: $([ -n "$RAILWAY_API_TOKEN" ] && echo "Yes" || echo "No")"
+          echo "Token length: ${#RAILWAY_API_TOKEN}"
           
           # Create a unique environment name for this PR
           ENV_NAME="pr-${{ github.event.pull_request.number }}"
@@ -163,7 +163,7 @@ jobs:
       
       - name: Delete preview environment
         env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
         run: |
           ENV_NAME="pr-${{ github.event.pull_request.number }}"
           
