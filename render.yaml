@@ -1,0 +1,45 @@
+services:
+  - type: compose
+    name: onyx-preview
+    env: docker
+    dockerfilePath: ./deployment/docker_compose/docker-compose.railway.yml
+    plan: standard-16
+    envVars:
+      # Database
+      - key: PGDATABASE
+        generateValue: true
+      - key: PGUSER
+        generateValue: true
+      - key: PGPASSWORD
+        generateValue: true
+      - key: PGHOST
+        value: db
+      - key: PGPORT
+        value: 5432
+      
+      # Redis
+      - key: REDISAUTH
+        generateValue: true
+      - key: REDISHOST
+        value: redis
+      - key: REDISPORT
+        value: 6379
+      
+      # Auth token
+      - key: INTERNAL_AUTH_TOKEN
+        generateValue: true
+      
+      # Railway compatibility
+      - key: RAILWAY_PUBLIC_DOMAIN
+        fromService:
+          type: compose
+          name: onyx-preview
+          property: hostport
+    previewsEnabled: true
+    pullRequestPreviewsEnabled: true
+    autoDeploy: false
+
+# Ensure port 80 is exposed publicly
+ports:
+  - port: 80
+    protocol: tcp

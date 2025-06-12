@@ -1,0 +1,15 @@
+name: Render Preview Environment
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+
+jobs:
+  deploy-preview:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy to Render
+        uses: render-examples/preview-envs-action@v1
+        with:
+          api-key: ${{ secrets.RENDER_API_KEY }}
+          wait-for-success: true
