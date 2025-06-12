@@ -26,8 +26,22 @@ jobs:
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
         run: |
+          # Verify Railway token is set
+          if [ -z "$RAILWAY_TOKEN" ]; then
+            echo "Error: RAILWAY_TOKEN is not set"
+            exit 1
+          fi
+          
+          echo "Railway token is set (length: ${#RAILWAY_TOKEN})"
+          
+          # Export token for Railway CLI
+          export RAILWAY_TOKEN=$RAILWAY_TOKEN
+          
           # Create a unique environment name for this PR
           ENV_NAME="pr-${{ github.event.pull_request.number }}"
+          
+          # Test Railway authentication
+          railway whoami || echo "Not authenticated yet"
           
           # Deploy using Railway CLI
           railway link -p ${{ secrets.RAILWAY_PROJECT_ID }}
