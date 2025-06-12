@@ -30,7 +30,7 @@ jobs:
           ENV_NAME="pr-${{ github.event.pull_request.number }}"
           
           # Deploy using Railway CLI
-          railway link ${{ secrets.RAILWAY_PROJECT_ID }}
+          railway link -p ${{ secrets.RAILWAY_PROJECT_ID }}
           railway environment $ENV_NAME
           
           # Deploy the services
@@ -148,6 +148,7 @@ jobs:
   cleanup-preview:
     if: github.event.action == 'closed'
     runs-on: ubuntu-latest
+    environment: preview
     
     steps:
       - name: Install Railway CLI
@@ -161,7 +162,7 @@ jobs:
         run: |
           ENV_NAME="pr-${{ github.event.pull_request.number }}"
           
-          railway link ${{ secrets.RAILWAY_PROJECT_ID }}
+          railway link -p ${{ secrets.RAILWAY_PROJECT_ID }}
           railway environment delete $ENV_NAME --yes || true
           
           echo "Preview environment $ENV_NAME deleted"
