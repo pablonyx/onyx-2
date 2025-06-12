@@ -36,29 +36,20 @@ jobs:
           # Test Railway authentication
           railway whoami
           
-          # Create the env if it doesn't exist
-          if ! railway environment list --project $PROJECT_ID | grep -q "^$ENV_NAME$"; then
-            echo "Creating new environment: $ENV_NAME"
-            railway environment create "$ENV_NAME" --project $PROJECT_ID --yes
-          else
-            echo "Environment $ENV_NAME already exists"
-          fi
+          # Link once – this sets project context for all later commands
+          railway link --project "$PROJECT_ID" --team personal --yes
           
-          # Deploy straight to that env (no link / no prompts)
-          railway up \
-            --project $PROJECT_ID \
-            --environment "$ENV_NAME" \
-            --detach
+          # Create the env if it's brand-new (ignore "already exists" error)
+          railway environment new "$ENV_NAME" --yes || true
+          
+          # Deploy the compose setup
+          railway up --detach --environment "$ENV_NAME"
           
           # Wait for deployment to complete
           sleep 30
           
-          # Grab the public URL
-          DEPLOY_URL=$(railway status --json \
-                       --project $PROJECT_ID \
-                       --environment "$ENV_NAME" \
-                       | jq -r '.url // empty')
-          
+          # Grab the public URL for the PR comment
+          DEPLOY_URL=$(railway status --json --environment "$ENV_NAME" | jq -r '.url // empty')
           [[ -z "$DEPLOY_URL" ]] && DEPLOY_URL="https://${ENV_NAME}.up.railway.app"
           echo "DEPLOY_URL=$DEPLOY_URL" >> "$GITHUB_OUTPUT"
           echo "Preview URL: $DEPLOY_URL"
@@ -175,10 +166,9 @@ jobs:
         run: |
           ENV_NAME="pr-${{ github.event.pull_request.number }}"
           
-          # Delete environment if it exists
-          if railway environment list --project $PROJECT_ID | grep -q "^$ENV_NAME$"; then
-            railway environment delete "$ENV_NAME" --project $PROJECT_ID --yes
-            echo "Preview environment $ENV_NAME deleted"
-          else
-            echo "Environment $ENV_NAME does not exist"
-          fi
+          # Link to the project first
+          railway link --project "$PROJECT_ID" --team personal --yes
+          
+          # Delete environment (ignore if it doesn't exist)
+          railway environment delete "$ENV_NAME" --yes || true
+          echo "Preview environment $ENV_NAME cleanup completed"
