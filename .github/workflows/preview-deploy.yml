@@ -32,21 +32,21 @@ jobs:
           # Create a unique environment name for this PR
           ENV_NAME="pr-${{ github.event.pull_request.number }}"
           
-          # Test Railway authentication with explicit token
-          railway --token "$RAILWAY_TOKEN" whoami
+          # Test Railway authentication
+          railway whoami
           
-          # Deploy using Railway CLI with token
-          railway --token "$RAILWAY_TOKEN" link -p ${{ secrets.RAILWAY_PROJECT_ID }}
-          railway --token "$RAILWAY_TOKEN" environment $ENV_NAME
+          # Deploy using Railway CLI
+          railway link -p ${{ secrets.RAILWAY_PROJECT_ID }}
+          railway environment $ENV_NAME
           
           # Deploy the services
-          railway --token "$RAILWAY_TOKEN" up --detach --environment=$ENV_NAME
+          railway up --detach --environment=$ENV_NAME
           
           # Wait for deployment to complete and get URL
           sleep 30
           
           # Get the deployment URL
-          DEPLOY_URL=$(railway --token "$RAILWAY_TOKEN" status --json | jq -r '.url // empty')
+          DEPLOY_URL=$(railway status --json | jq -r '.url // empty')
           
           # If no URL from status, construct it
           if [ -z "$DEPLOY_URL" ]; then
@@ -167,7 +167,7 @@ jobs:
         run: |
           ENV_NAME="pr-${{ github.event.pull_request.number }}"
           
-          railway --token "$RAILWAY_TOKEN" link -p ${{ secrets.RAILWAY_PROJECT_ID }}
-          railway --token "$RAILWAY_TOKEN" environment delete $ENV_NAME --yes || true
+          railway link -p ${{ secrets.RAILWAY_PROJECT_ID }}
+          railway environment delete $ENV_NAME --yes || true
           
           echo "Preview environment $ENV_NAME deleted"
