@@ -24,36 +24,43 @@ jobs:
         id: deploy
         env:
           RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
+          PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
         run: |
+          set -euo pipefail
+          ENV_NAME="pr-${{ github.event.pull_request.number }}"
+          
           # Debug: Check if token is being passed
           echo "Token exists: $([ -n "$RAILWAY_API_TOKEN" ] && echo "Yes" || echo "No")"
           echo "Token length: ${#RAILWAY_API_TOKEN}"
           
-          # Create a unique environment name for this PR
-          ENV_NAME="pr-${{ github.event.pull_request.number }}"
-          
           # Test Railway authentication
           railway whoami
           
-          # Deploy using Railway CLI
-          railway link -p ${{ secrets.RAILWAY_PROJECT_ID }}
-          railway environment $ENV_NAME
-          
-          # Deploy the services
-          railway up --detach --environment=$ENV_NAME
-          
-          # Wait for deployment to complete and get URL
-          sleep 30
-          
-          # Get the deployment URL
-          DEPLOY_URL=$(railway status --json | jq -r '.url // empty')
-          
-          # If no URL from status, construct it
-          if [ -z "$DEPLOY_URL" ]; then
-            DEPLOY_URL="https://${ENV_NAME}.up.railway.app"
+          # Create the env if it doesn't exist
+          if ! railway environment list --project $PROJECT_ID | grep -q "^$ENV_NAME$"; then
+            echo "Creating new environment: $ENV_NAME"
+            railway environment create "$ENV_NAME" --project $PROJECT_ID --yes
+          else
+            echo "Environment $ENV_NAME already exists"
           fi
           
-          echo "DEPLOY_URL=$DEPLOY_URL" >> $GITHUB_OUTPUT
+          # Deploy straight to that env (no link / no prompts)
+          railway up \
+            --project $PROJECT_ID \
+            --environment "$ENV_NAME" \
+            --detach
+          
+          # Wait for deployment to complete
+          sleep 30
+          
+          # Grab the public URL
+          DEPLOY_URL=$(railway status --json \
+                       --project $PROJECT_ID \
+                       --environment "$ENV_NAME" \
+                       | jq -r '.url // empty')
+          
+          [[ -z "$DEPLOY_URL" ]] && DEPLOY_URL="https://${ENV_NAME}.up.railway.app"
+          echo "DEPLOY_URL=$DEPLOY_URL" >> "$GITHUB_OUTPUT"
           echo "Preview URL: $DEPLOY_URL"
       
       - name: Wait for services to be ready
@@ -164,10 +171,14 @@ jobs:
       - name: Delete preview environment
         env:
           RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
+          PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
         run: |
           ENV_NAME="pr-${{ github.event.pull_request.number }}"
           
-          railway link -p ${{ secrets.RAILWAY_PROJECT_ID }}
-          railway environment delete $ENV_NAME --yes || true
-          
-          echo "Preview environment $ENV_NAME deleted"
+          # Delete environment if it exists
+          if railway environment list --project $PROJECT_ID | grep -q "^$ENV_NAME$"; then
+            railway environment delete "$ENV_NAME" --project $PROJECT_ID --yes
+            echo "Preview environment $ENV_NAME deleted"
+          else
+            echo "Environment $ENV_NAME does not exist"
+          fi
