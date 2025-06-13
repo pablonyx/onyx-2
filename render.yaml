@@ -79,7 +79,7 @@ services:
     name: web-server
     plan: starter
     env: docker
-    dockerfilePath: Dockerfile
+    dockerfilePath: Dockerfile.render
     dockerContext: web
     envVars:
       - key: INTERNAL_URL

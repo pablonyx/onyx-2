@@ -1,0 +1,64 @@
+FROM node:20-alpine AS base
+
+LABEL com.onyx.maintainer="founders@onyx.app"
+
+ARG ONYX_VERSION=0.0.0-dev
+ENV ONYX_VERSION=${ONYX_VERSION}
+
+FROM base AS builder
+RUN apk add --no-cache libc6-compat
+WORKDIR /app
+
+# First copy package files
+COPY package.json package-lock.json ./
+
+# Debug - check files exist
+RUN ls -la package* || echo "Package files not found"
+
+# Try npm install instead of npm ci for Render
+RUN npm install
+
+# Then copy the rest
+COPY . .
+
+ENV NEXT_PRIVATE_STANDALONE=true
+ENV NEXT_TELEMETRY_DISABLED=1
+
+# Build arguments
+ARG NEXT_PUBLIC_DISABLE_STREAMING
+ENV NEXT_PUBLIC_DISABLE_STREAMING=${NEXT_PUBLIC_DISABLE_STREAMING}
+ARG NEXT_PUBLIC_NEW_CHAT_DIRECTS_TO_SAME_PERSONA
+ENV NEXT_PUBLIC_NEW_CHAT_DIRECTS_TO_SAME_PERSONA=${NEXT_PUBLIC_NEW_CHAT_DIRECTS_TO_SAME_PERSONA}
+ARG NEXT_PUBLIC_POSITIVE_PREDEFINED_FEEDBACK_OPTIONS
+ENV NEXT_PUBLIC_POSITIVE_PREDEFINED_FEEDBACK_OPTIONS=${NEXT_PUBLIC_POSITIVE_PREDEFINED_FEEDBACK_OPTIONS}
+ARG NEXT_PUBLIC_NEGATIVE_PREDEFINED_FEEDBACK_OPTIONS
+ENV NEXT_PUBLIC_NEGATIVE_PREDEFINED_FEEDBACK_OPTIONS=${NEXT_PUBLIC_NEGATIVE_PREDEFINED_FEEDBACK_OPTIONS}
+ARG NEXT_PUBLIC_DISABLE_LOGOUT
+ENV NEXT_PUBLIC_DISABLE_LOGOUT=${NEXT_PUBLIC_DISABLE_LOGOUT}
+ARG NEXT_PUBLIC_THEME
+ENV NEXT_PUBLIC_THEME=${NEXT_PUBLIC_THEME}
+ARG NEXT_PUBLIC_FORGOT_PASSWORD_ENABLED
+ENV NEXT_PUBLIC_FORGOT_PASSWORD_ENABLED=${NEXT_PUBLIC_FORGOT_PASSWORD_ENABLED}
+
+# Build
+RUN npm run build
+
+# Production image
+FROM base AS runner
+WORKDIR /app
+
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 nextjs
+
+COPY --from=builder /app/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+
+USER nextjs
+
+EXPOSE 3000
+ENV PORT=3000
+ENV NODE_ENV=production
+
+# Server build
+CMD ["node", "server.js"]
