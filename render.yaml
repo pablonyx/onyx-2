@@ -7,7 +7,6 @@ services:
   - type: web
     name: nginx
     plan: starter
-    previewEnv: true
     env: docker
     dockerfilePath: ./Dockerfile.nginx
     dockerContext: .
