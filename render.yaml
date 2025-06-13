@@ -25,8 +25,8 @@ services:
     name: api-server
     plan: starter
     env: docker
-    dockerfilePath: Dockerfile
-    dockerContext: ./backend
+    dockerfilePath: backend/Dockerfile
+    dockerContext: .
     dockerCommand: /bin/sh -c "alembic -n schema_private upgrade head && echo 'Starting Onyx Api Server' && uvicorn onyx.main:app --host 0.0.0.0 --port 8080"
     envVars:
       - key: AUTH_TYPE
@@ -51,8 +51,8 @@ services:
     name: background
     plan: starter
     env: docker
-    dockerfilePath: Dockerfile
-    dockerContext: ./backend
+    dockerfilePath: backend/Dockerfile
+    dockerContext: .
     dockerCommand: /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf
     envVars:
       - key: AUTH_TYPE
@@ -79,8 +79,8 @@ services:
     name: web-server
     plan: starter
     env: docker
-    dockerfilePath: Dockerfile
-    dockerContext: ./web
+    dockerfilePath: web/Dockerfile
+    dockerContext: .
     envVars:
       - key: INTERNAL_URL
         value: http://api-server:8080
@@ -92,8 +92,8 @@ services:
     name: inference-model-server
     plan: standard
     env: docker
-    dockerfilePath: Dockerfile.model_server
-    dockerContext: ./backend
+    dockerfilePath: backend/Dockerfile.model_server
+    dockerContext: .
     dockerCommand: /bin/sh -c "if [ '${DISABLE_MODEL_SERVER:-false}' = 'True' ]; then echo 'Skipping service...'; exit 0; else exec uvicorn model_server.main:app --host 0.0.0.0 --port 9000; fi"
     envVars:
       - key: LOG_LEVEL
@@ -106,8 +106,8 @@ services:
     name: indexing-model-server
     plan: standard
     env: docker
-    dockerfilePath: Dockerfile.model_server
-    dockerContext: ./backend
+    dockerfilePath: backend/Dockerfile.model_server
+    dockerContext: .
     dockerCommand: /bin/sh -c "if [ '${DISABLE_MODEL_SERVER:-false}' = 'True' ]; then echo 'Skipping service...'; exit 0; else exec uvicorn model_server.main:app --host 0.0.0.0 --port 9000; fi"
     envVars:
       - key: LOG_LEVEL
