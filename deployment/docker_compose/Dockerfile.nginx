@@ -1,0 +1,15 @@
+FROM nginx:1.23.4-alpine
+
+# Install required tools
+RUN apk add --no-cache dos2unix curl bash
+
+# Copy nginx configuration
+COPY deployment/data/nginx/run-nginx.sh /etc/nginx/conf.d/
+COPY deployment/docker_compose/*.conf /etc/nginx/conf.d/
+
+# Make script executable
+RUN chmod +x /etc/nginx/conf.d/run-nginx.sh && \
+    dos2unix /etc/nginx/conf.d/run-nginx.sh
+
+# Default command
+CMD ["/bin/sh", "-c", "/etc/nginx/conf.d/run-nginx.sh app.conf.template.dev"]

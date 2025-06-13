@@ -8,26 +8,17 @@ services:
     name: nginx
     plan: starter
     env: docker
-    dockerfilePath: Dockerfile.nginx
+    dockerfilePath: deployment/docker_compose/Dockerfile.nginx
     dockerContext: .
-    buildCommand: |
-      # Copy nginx config
-      mkdir -p deployment/data/nginx
-      cp deployment/docker_compose/*.conf deployment/data/nginx/
-      cp deployment/docker_compose/run-nginx.sh deployment/data/nginx/
-      
-      # Create nginx Dockerfile
-      cat > Dockerfile.nginx << 'EOF'
-      FROM nginx:1.23.4-alpine
-      RUN apk add --no-cache dos2unix
-      COPY deployment/data/nginx /etc/nginx/conf.d
-      EOF
     envVars:
       - key: DOMAIN
         value: localhost
-      - key: WEB_DOMAIN
+      - key: WEB_DOMAIN  
         value: localhost
-    dockerCommand: /bin/sh -c "dos2unix /etc/nginx/conf.d/run-nginx.sh && /etc/nginx/conf.d/run-nginx.sh app.conf.template"
+      - key: ONYX_BACKEND_API_HOST
+        value: api-server
+      - key: ONYX_WEB_SERVER_HOST
+        value: web-server
 
   # API Server
   - type: pserv
