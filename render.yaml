@@ -135,8 +135,13 @@ services:
   - type: pserv
     name: index
     plan: standard
-    env: image
-    image: vespaengine/vespa:8.526.15
+    env: docker
+    dockerfilePath: ./Dockerfile.vespa
+    dockerContext: .
+    buildCommand: |
+      cat > Dockerfile.vespa << 'EOF'
+      FROM vespaengine/vespa:8.526.15
+      EOF
     envVars:
       - key: VESPA_SKIP_UPGRADE_CHECK
         value: "true"
@@ -153,7 +158,6 @@ databases:
     plan: starter
     databaseName: onyx
     user: postgres
-    version: "15"
 
   # Redis Cache
   - name: cache
