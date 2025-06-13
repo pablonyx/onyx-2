@@ -150,10 +150,10 @@ services:
 databases:
   # PostgreSQL Database
   - name: relational-db
-    plan: starter
+    plan: free
     databaseName: onyx
     user: onyxuser
 
   # Redis Cache
   - name: cache
-    plan: starter
+    plan: free
