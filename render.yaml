@@ -27,9 +27,7 @@ services:
         value: localhost
       - key: WEB_DOMAIN
         value: localhost
-    startCommand: >-
-      /bin/sh -c "dos2unix /etc/nginx/conf.d/run-nginx.sh &&
-      /etc/nginx/conf.d/run-nginx.sh app.conf.template"
+    dockerCommand: /bin/sh -c "dos2unix /etc/nginx/conf.d/run-nginx.sh && /etc/nginx/conf.d/run-nginx.sh app.conf.template"
 
   # API Server
   - type: pserv
@@ -38,15 +36,18 @@ services:
     env: docker
     dockerfilePath: ./backend/Dockerfile.cloud
     dockerContext: ./backend
-    startCommand: >-
-      /bin/sh -c "alembic -n schema_private upgrade head &&
-      echo 'Starting Onyx Api Server' &&
-      uvicorn onyx.main:app --host 0.0.0.0 --port 8080"
+    dockerCommand: /bin/sh -c "alembic -n schema_private upgrade head && echo 'Starting Onyx Api Server' && uvicorn onyx.main:app --host 0.0.0.0 --port 8080"
     envVars:
       - key: AUTH_TYPE
         value: disabled
       - key: POSTGRES_HOST
         value: relational-db
+      - key: POSTGRES_USER
+        value: onyxuser
+      - key: POSTGRES_PASSWORD
+        generateValue: true
+      - key: POSTGRES_DB
+        value: onyx
       - key: VESPA_HOST
         value: index
       - key: REDIS_HOST
@@ -61,12 +62,18 @@ services:
     env: docker
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
-    startCommand: /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf
+    dockerCommand: /usr/bin/supervisord -c /etc/supervisor/conf.d/supervisord.conf
     envVars:
       - key: AUTH_TYPE
         value: disabled
       - key: POSTGRES_HOST
         value: relational-db
+      - key: POSTGRES_USER
+        value: onyxuser
+      - key: POSTGRES_PASSWORD
+        generateValue: true
+      - key: POSTGRES_DB
+        value: onyx
       - key: VESPA_HOST
         value: index
       - key: REDIS_HOST
@@ -96,13 +103,7 @@ services:
     env: docker
     dockerfilePath: ./backend/Dockerfile.model_server
     dockerContext: ./backend
-    startCommand: >-
-      /bin/sh -c "if [ '${DISABLE_MODEL_SERVER:-false}' = 'True' ]; then
-        echo 'Skipping service...';
-        exit 0;
-      else
-        exec uvicorn model_server.main:app --host 0.0.0.0 --port 9000;
-      fi"
+    dockerCommand: /bin/sh -c "if [ '${DISABLE_MODEL_SERVER:-false}' = 'True' ]; then echo 'Skipping service...'; exit 0; else exec uvicorn model_server.main:app --host 0.0.0.0 --port 9000; fi"
     envVars:
       - key: LOG_LEVEL
         value: info
@@ -116,13 +117,7 @@ services:
     env: docker
     dockerfilePath: ./backend/Dockerfile.model_server
     dockerContext: ./backend
-    startCommand: >-
-      /bin/sh -c "if [ '${DISABLE_MODEL_SERVER:-false}' = 'True' ]; then
-        echo 'Skipping service...';
-        exit 0;
-      else
-        exec uvicorn model_server.main:app --host 0.0.0.0 --port 9000;
-      fi"
+    dockerCommand: /bin/sh -c "if [ '${DISABLE_MODEL_SERVER:-false}' = 'True' ]; then echo 'Skipping service...'; exit 0; else exec uvicorn model_server.main:app --host 0.0.0.0 --port 9000; fi"
     envVars:
       - key: LOG_LEVEL
         value: info
@@ -157,7 +152,7 @@ databases:
   - name: relational-db
     plan: starter
     databaseName: onyx
-    user: postgres
+    user: onyxuser
 
   # Redis Cache
   - name: cache
