@@ -36,7 +36,6 @@ services:
   - type: pserv
     name: api-server
     plan: starter
-    previewEnv: true
     env: docker
     dockerfilePath: ./backend/Dockerfile.cloud
     dockerContext: ./backend
@@ -60,7 +59,6 @@ services:
   - type: pserv
     name: background
     plan: starter
-    previewEnv: true
     env: docker
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
@@ -83,7 +81,6 @@ services:
   - type: pserv
     name: web-server
     plan: starter
-    previewEnv: true
     env: docker
     dockerfilePath: ./web/Dockerfile
     dockerContext: ./web
@@ -97,7 +94,6 @@ services:
   - type: pserv
     name: inference-model-server
     plan: standard
-    previewEnv: true
     env: docker
     dockerfilePath: ./backend/Dockerfile.model_server
     dockerContext: ./backend
@@ -118,7 +114,6 @@ services:
   - type: pserv
     name: indexing-model-server
     plan: standard
-    previewEnv: true
     env: docker
     dockerfilePath: ./backend/Dockerfile.model_server
     dockerContext: ./backend
@@ -141,7 +136,6 @@ services:
   - type: pserv
     name: index
     plan: standard
-    previewEnv: true
     env: image
     image: vespaengine/vespa:8.526.15
     envVars:
@@ -158,7 +152,6 @@ databases:
   # PostgreSQL Database
   - name: relational-db
     plan: starter
-    previewEnv: true
     databaseName: onyx
     user: postgres
     version: "15"
@@ -166,4 +159,3 @@ databases:
   # Redis Cache
   - name: cache
     plan: starter
-    previewEnv: true
