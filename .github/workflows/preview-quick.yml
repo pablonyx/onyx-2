@@ -1,0 +1,96 @@
+# ------------------------------------------------------------
+# Onyx PR Preview (Quick Cloudflare Tunnel, no DNS setup)
+# ------------------------------------------------------------
+name: PR Preview
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]   # fire on every push to the PR
+    branches: [main]                         # tweak if you use a different base
+
+concurrency:
+  group: pr-preview-${{ github.event.pull_request.number }}
+  cancel-in-progress: true                   # stop older runs for same PR
+
+jobs:
+  preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45                      # hard cap so runners don’t hang
+
+    env:
+      IMAGE_TAG: ci                         # docker images tagged “ci” only
+      STACK_NAME: onyx-${{ github.event.pull_request.number }}
+
+    steps:
+      # 1. checkout
+      - uses: actions/checkout@v4
+
+      # 2. build images & start the full compose stack (nginx listens on :80)
+      - name: Build and start stack
+        run: |
+          IMAGE_TAG=${IMAGE_TAG} \
+          docker compose -f deployment/docker_compose/docker-compose.dev.yml \
+            --project-name ${STACK_NAME} \
+            up -d --build
+
+      # 3. wait for the API to report healthy
+      - name: Wait for health check
+        run: |
+          for i in {1..60}; do
+            curl -sf http://localhost:8080/health && exit 0
+            echo "not ready yet"; sleep 5
+          done
+          echo "Service never became healthy" && exit 1
+
+      # 4. install cloudflared (tiny helper action, ~10 MB)
+      - uses: AnimMouse/setup-cloudflared@v2
+
+      # 5. launch a *quick* tunnel and capture the random URL
+      - name: Launch Cloudflare Quick Tunnel
+        id: tunnel
+        run: |
+          nohup cloudflared tunnel --url http://localhost:80 --no-autoupdate > cf.log 2>&1 &
+          for i in {1..30}; do
+            url=$(grep -oE 'https://[0-9a-z-]+\.trycloudflare\.com' cf.log | head -n 1)
+            if [ -n "$url" ]; then
+              echo "Found URL: $url"
+              echo "preview_url=$url" >> $GITHUB_OUTPUT
+              break
+            fi
+            sleep 2
+          done
+          [ -n "$url" ] || (echo "Tunnel never returned a URL" && exit 1)
+
+      # 6. comment the live link on the pull-request
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `🌐 **Preview ready:** ${process.env.PREVIEW_URL}`
+            })
+        env:
+          PREVIEW_URL: ${{ steps.tunnel.outputs.preview_url }}
+
+      # 7. run Playwright E2E tests against that URL
+      - name: Install Node deps
+        working-directory: web
+        run: |
+          npm ci
+          npx playwright install --with-deps
+
+      - name: Run Playwright tests
+        working-directory: web
+        env:
+          PREVIEW_URL: ${{ steps.tunnel.outputs.preview_url }}
+        run: npx playwright test
+
+      # 8. always tear everything down (even if tests failed)
+      - name: Shutdown stack
+        if: always()
+        run: |
+          docker compose -f deployment/docker_compose/docker-compose.dev.yml \
+            --project-name ${STACK_NAME} down -v
+
